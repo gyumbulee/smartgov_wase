@@ -1,16 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Banknote, Clock, ShieldCheck, FileCheck2, ArrowRight } from "lucide-react";
+import { Banknote, Clock, ShieldCheck, FileCheck2, ArrowRight, Loader2 } from "lucide-react";
 import { serviceService } from "@/services/serviceService";
+import { applicationService } from "@/services/applicationService";
 import type { Service } from "@/types/service";
 
 export default function ServiceDetailPage() {
   const params = useParams<{ slug: string }>();
+  const router = useRouter();
   const [service, setService] = useState<Service | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [applying, setApplying] = useState(false);
 
   useEffect(() => {
     serviceService
@@ -18,6 +21,28 @@ export default function ServiceDetailPage() {
       .then(setService)
       .catch(() => setNotFound(true));
   }, [params.slug]);
+
+  async function handleApply() {
+    if (!service) return;
+
+    if (!window.localStorage.getItem("smartgov_token")) {
+      router.push("/register");
+      return;
+    }
+
+    setApplying(true);
+    try {
+      const application = await applicationService.createForService(service.id);
+      router.push(`/applications/${application.id}`);
+    } catch {
+      // Most likely identity/eligibility isn't verified on this account,
+      // or the person isn't logged in as a citizen — send them to their
+      // dashboard where that status is visible rather than failing silently.
+      router.push("/dashboard");
+    } finally {
+      setApplying(false);
+    }
+  }
 
   if (notFound) {
     return (
@@ -108,13 +133,14 @@ export default function ServiceDetailPage() {
       )}
 
       <div className="mt-10 border-t border-black/5 pt-6">
-        <Link href="/register" className="btn-primary">
+        <button onClick={handleApply} disabled={applying} className="btn-primary">
+          {applying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           Apply for this service
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </Link>
+          {!applying && <ArrowRight className="ml-2 h-4 w-4" />}
+        </button>
         <p className="mt-2 text-xs text-ink-muted">
-          You'll need a verified SmartGov-Wase account to apply. Application
-          submission goes live in a later phase.
+          You'll need a verified SmartGov-Wase account to apply. If you're not
+          logged in, you'll be taken to registration first.
         </p>
       </div>
     </section>

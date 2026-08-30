@@ -42,9 +42,17 @@ export const authService = {
   },
 
   login: async (email: string, password: string) => {
-    const { data } = await api.post<LoginResponse>("/auth/login", { email, password });
-    return data;
-  },
+  const { data } = await api.post<LoginResponse>("/auth/login", {
+    email,
+    password,
+  });
+
+  console.log("LOGIN API DATA:", data);
+  console.log("LOGIN API DATA TYPE:", typeof data);
+  console.log("LOGIN API ROLES:", data?.roles);
+
+  return data;
+},
 
   logout: async () => {
     await api.post("/auth/logout");

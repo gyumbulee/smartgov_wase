@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\CitizenRegistrationController;
 use App\Http\Controllers\Api\V1\Auth\NinVerificationController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
+use App\Http\Controllers\Api\V1\Citizen\ApplicationController;
+use App\Http\Controllers\Api\V1\Citizen\ApplicationDocumentController;
 use App\Http\Controllers\Api\V1\Citizen\DashboardController as CitizenDashboardController;
 use App\Http\Controllers\Api\V1\Public\AnnouncementController;
 use App\Http\Controllers\Api\V1\Public\DepartmentController;
@@ -22,9 +24,10 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | API Routes — versioned per spec §34
 |--------------------------------------------------------------------------
-| Phase 3 adds: the services configuration engine — public directory,
-| and admin CRUD for categories/services/fields/requirements/fees.
-| Applications/payments/certificates remain schema-only until Phases 4–6.
+| Phase 4 adds: the citizen application flow — create/save/submit/cancel,
+| document uploads, and tracking. Payments and certificate generation
+| remain schema-only until Phases 5–6; submission goes only as far as
+| payment_pending / processing, honestly, per spec §11.
 */
 
 Route::prefix('v1')->group(function () {
@@ -65,6 +68,16 @@ Route::prefix('v1')->group(function () {
     // ---- Citizen (requires citizen role) --------------------------------
     Route::prefix('citizen')->middleware(['auth:sanctum', 'role:citizen'])->group(function () {
         Route::get('/dashboard', [CitizenDashboardController::class, 'index']);
+
+        Route::get('/applications', [ApplicationController::class, 'index']);
+        Route::post('/applications', [ApplicationController::class, 'store']);
+        Route::get('/applications/{application}', [ApplicationController::class, 'show']);
+        Route::put('/applications/{application}/fields', [ApplicationController::class, 'saveFields']);
+        Route::post('/applications/{application}/submit', [ApplicationController::class, 'submit']);
+        Route::post('/applications/{application}/cancel', [ApplicationController::class, 'cancel']);
+
+        Route::post('/applications/{application}/documents', [ApplicationDocumentController::class, 'store']);
+        Route::delete('/applications/{application}/documents/{document}', [ApplicationDocumentController::class, 'destroy']);
     });
 
     // ---- Admin (requires staff/admin role + specific permissions) ------

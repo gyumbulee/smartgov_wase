@@ -22,8 +22,15 @@ export default function LoginPage() {
       window.localStorage.setItem("smartgov_token", result.token);
       const isCitizen = result.roles.includes("citizen");
       router.push(isCitizen ? "/dashboard" : "/admin/dashboard");
-    } catch {
-      setError("Invalid email or password.");
+        } catch (err: any) {
+      console.error("LOGIN ERROR:", err);
+      console.error("LOGIN RESPONSE:", err?.response?.data);
+      console.error("LOGIN STATUS:", err?.response?.status);
+      setError(
+        err?.response?.data?.message ||
+        err?.message ||
+        "Login failed."
+      );
     } finally {
       setLoading(false);
     }
