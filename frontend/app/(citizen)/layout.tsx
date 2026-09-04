@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutDashboard, FileText, Bell, LogOut } from "lucide-react";
+import { LayoutDashboard, FileText, Bell, LogOut, Banknote, Award } from "lucide-react";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/applications", label: "My applications", icon: FileText },
+  { href: "/certificates", label: "Certificates", icon: Award },
+  { href: "/payments", label: "Payments", icon: Banknote },
 ];
 
 export default function CitizenLayout({ children }: { children: React.ReactNode }) {

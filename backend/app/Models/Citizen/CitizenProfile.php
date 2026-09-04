@@ -3,20 +3,20 @@
 namespace App\Models\Citizen;
 
 use App\Models\Applications\Application;
+use App\Models\Certificates\Certificate;
 use App\Models\Complaints\Complaint;
 use App\Models\Government\Community;
 use App\Models\Government\Ward;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CitizenProfile extends Model
 {
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $keyType = 'string';
     public $incrementing = false;
@@ -66,6 +66,11 @@ class CitizenProfile extends Model
         return $this->hasMany(Complaint::class, 'citizen_id');
     }
 
+    public function certificates(): HasMany
+    {
+        return $this->hasMany(Certificate::class, 'citizen_id');
+    }
+
     public function fullName(): string
     {
         return trim("{$this->first_name} {$this->middle_name} {$this->last_name}");
@@ -85,4 +90,3 @@ class CitizenProfile extends Model
         return $this->eligibility_status === 'verified';
     }
 }
-

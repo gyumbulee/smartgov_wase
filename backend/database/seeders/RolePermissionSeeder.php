@@ -24,6 +24,7 @@ class RolePermissionSeeder extends Seeder
             'payments.view', 'payments.manage',
             'certificates.view', 'certificates.manage',
             'templates.view', 'templates.manage',
+            'departments.view', 'departments.manage',
             'news.publish',
             'projects.manage',
             'content.manage',

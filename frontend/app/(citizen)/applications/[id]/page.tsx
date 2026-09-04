@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Upload, Loader2, CheckCircle2, XCircle, Trash2 } from "lucide-react";
+import { ArrowLeft, Upload, Loader2, CheckCircle2, XCircle, Trash2, CreditCard, Award } from "lucide-react";
 import { applicationService } from "@/services/applicationService";
 import { serviceService } from "@/services/serviceService";
+import { paymentService } from "@/services/paymentService";
 import type { Application } from "@/types/application";
 import type { Service } from "@/types/service";
 
@@ -23,6 +24,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [application, setApplication] = useState<Application | null>(null);
   const [service, setService] = useState<Service | null>(null);
@@ -30,6 +32,8 @@ export default function ApplicationDetailPage() {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitErrors, setSubmitErrors] = useState<string[] | null>(null);
+  const [payingNow, setPayingNow] = useState(false);
+  const paymentResult = searchParams.get("payment"); // "success" | "failed" | "error" | null, set by the backend callback redirect
 
   const refresh = useCallback(async () => {
     const app = await applicationService.get(params.id);
@@ -44,6 +48,14 @@ export default function ApplicationDetailPage() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    // Clear the ?payment= param from the URL after reading it once, so a
+    // page refresh doesn't keep re-showing a stale result banner.
+    if (paymentResult) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [paymentResult]);
 
   const isEditable = application?.status === "draft" || application?.status === "correction_required";
 
@@ -94,6 +106,17 @@ export default function ApplicationDetailPage() {
     }
   }
 
+  async function handlePayNow() {
+    if (!application) return;
+    setPayingNow(true);
+    try {
+      const { checkout_url } = await paymentService.initialize(application.id);
+      window.location.href = checkout_url; // full navigation — this may be a real gateway's hosted page
+    } catch {
+      setPayingNow(false);
+    }
+  }
+
   async function handleCancel() {
     if (!application || !confirm("Cancel this application? This cannot be undone.")) return;
     await applicationService.cancel(application.id);
@@ -121,16 +144,55 @@ export default function ApplicationDetailPage() {
         </span>
       </div>
 
+      {paymentResult === "success" && (
+        <div className="mt-4 flex items-center gap-2 rounded-card border border-brand-green/30 bg-brand-light-green p-4 text-sm text-brand-deep-green">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          Payment confirmed. Your application is now processing.
+        </div>
+      )}
+      {paymentResult === "failed" && (
+        <div className="mt-4 flex items-center gap-2 rounded-card border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <XCircle className="h-4 w-4 shrink-0" />
+          We couldn't confirm that payment. You can try again below.
+        </div>
+      )}
+
       {application.status === "payment_pending" && (
-        <div className="mt-4 rounded-card border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          Your application has been submitted. Payment isn't wired up yet in this build —
-          this is where you'd be sent to complete payment before processing begins.
+        <div className="mt-4 rounded-card border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm text-amber-800">
+            Your application has been submitted and is awaiting payment of{" "}
+            <strong>
+              {application.currency} {application.fee?.toLocaleString()}
+            </strong>{" "}
+            before processing begins.
+          </p>
+          <button onClick={handlePayNow} disabled={payingNow} className="btn-primary mt-3">
+            {payingNow ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+            Pay now
+          </button>
         </div>
       )}
 
       {application.status === "processing" && (
         <div className="mt-4 rounded-card border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
           Your application is queued for processing. You'll be notified once your document is ready.
+        </div>
+      )}
+
+      {application.status === "completed" && (
+        <div className="mt-4 flex items-center justify-between rounded-card border border-brand-green/30 bg-brand-light-green p-4">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-medium text-brand-deep-green">
+              <Award className="h-4 w-4" />
+              Your certificate is ready
+            </p>
+            <p className="mt-1 text-xs text-brand-deep-green/80">
+              You can download it any time from your certificate library.
+            </p>
+          </div>
+          <Link href="/certificates" className="btn-primary">
+            View certificate
+          </Link>
         </div>
       )}
 

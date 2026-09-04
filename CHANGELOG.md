@@ -1,91 +1,96 @@
-# SmartGov-Wase — Phase 4 Delta (Applications: Forms, Documents, Tracking)
+# SmartGov-Wase — Phase 8 Follow-up (Image Uploads + Missing Public Pages + Leadership Reorder)
 
-Per spec §38 Phase 4: application forms driven by the Phase 3 dynamic
-field engine, file uploads against configured requirements, application
-status tracking, and citizen-facing dashboard/list/detail pages.
+Closes three of the four items flagged at the end of the Phase 8 delta.
+The fourth (response-shape consistency) remains an open, non-urgent
+item — not addressed here, still flagged for a dedicated pass.
 
-No new migrations — Phase 1's schema (`applications`,
-`application_field_values`, `application_documents`,
-`application_status_history`) already covers everything here.
+## 1. Image uploads — the most consequential fix
 
-## NEW FILES
+**A security-relevant design decision came before any code:** application
+documents and certificate PDFs are stored on the **private** `local`
+disk (correct — they must never be publicly reachable by URL). Content
+images (news, leadership, events) need to be **publicly viewable**. A
+naive "serve any media by ID" endpoint would have let anyone download
+private citizen documents just by guessing an ID. Instead:
 
-### Backend
+- New uploads for public content go to a **separate `public` disk**,
+  handled by a controller (`MediaController`) that has no ownership
+  check and no reason for one — everything through it is meant to be
+  public. `ApplicationDocumentController` and certificate generation
+  are untouched and still use `local`.
+
+### NEW FILES
 | File | Purpose |
 |---|---|
-| `app/Actions/Applications/CreateApplicationAction.php` | Creates a draft application and **snapshots the service's current configuration** (fields, requirements, fee) onto it per spec §77 — later fee/field changes never silently rewrite what a citizen already applied under. |
-| `app/Actions/Applications/SubmitApplicationAction.php` | Validates required fields and required documents are present, then transitions status **honestly**: `payment_pending` if the service requires payment, `processing` if it doesn't. No fake "officer reviewing" state (spec §11). |
-| `app/Http/Requests/Citizen/CreateApplicationRequest.php`, `SaveApplicationFieldsRequest.php`, `UploadApplicationDocumentRequest.php` | Request validation. |
-| `app/Http/Resources/ApplicationResource.php`, `ApplicationDocumentResource.php`, `ApplicationStatusHistoryResource.php` | API response shapes — an application never exposes another citizen's data, and ownership is checked server-side on every controller action, not inferred from the URL. |
-| `app/Http/Controllers/Api/V1/Citizen/ApplicationController.php` | `POST /citizen/applications` (create/resume draft), `GET /citizen/applications` (list mine), `GET /citizen/applications/{id}`, `PUT .../fields` (save progress), `POST .../submit`, `POST .../cancel`. |
-| `app/Http/Controllers/Api/V1/Citizen/ApplicationDocumentController.php` | Upload/delete documents against a specific requirement. Validates file type and size **against that requirement's own configured limits**, not just a generic cap. |
+| `backend/app/Http/Requests/Admin/UploadMediaRequest.php` | Validates image uploads (5MB max, images only). |
+| `backend/app/Http/Resources/MediaResource.php` | Returns the uploaded media's public URL, dimensions, alt text. |
+| `backend/app/Http/Controllers/Api/V1/Admin/MediaController.php` | `POST /admin/media` (upload), `DELETE /admin/media/{media}` — refuses to delete anything not on the `public` disk, as a second guard against misuse. |
+| `frontend/components/admin/ImageUploadField.tsx` | Reusable upload-with-preview component — used identically across News, Leadership, and Events. |
 
-### Frontend
-| File | Purpose |
-|---|---|
-| `types/application.ts` | TypeScript types for applications, documents, status history. |
-| `services/applicationService.ts` | API calls: `list`, `get`, `createForService`, `saveFields`, `uploadDocument`, `deleteDocument`, `submit`, `cancel`. |
-| `app/(citizen)/layout.tsx` | Citizen portal chrome — top nav, distinct from the public site and admin portal. |
-| `app/(citizen)/dashboard/page.tsx` | Identity/eligibility status, application count, quick actions. |
-| `app/(citizen)/applications/page.tsx` | List of the citizen's own applications with status badges. |
-| `app/(citizen)/applications/[id]/page.tsx` | The core of this phase — renders the service's dynamic fields (text/textarea/select/date/number) from Phase 3's field engine, handles document upload/removal per requirement, shows submission validation errors inline, and displays the full status timeline. |
-
-## MODIFIED FILES
-
+### MODIFIED
 | File | What changed |
 |---|---|
-| `backend/routes/api.php` | Added the citizen application routes under `/citizen/applications/*`, all gated by `auth:sanctum` + `role:citizen`. |
-| `frontend/app/(public)/services/[slug]/page.tsx` | "Apply for this service" now actually does something: creates (or resumes) an application and routes into the application detail page. Sends unauthenticated visitors to `/register` first. |
+| `StoreNewsRequest.php`, `StoreLeadershipRequest.php`, `StoreEventRequest.php` | Accept `featured_image_id` / `photo_media_id`. |
+| `NewsResource.php`, `LeadershipResource.php`, `EventResource.php` | Resolve and return the image URL when set. |
+| `routes/api.php` | Added the media routes, gated by `content.manage` (the only role with `news.publish` — `content_admin` — already has `content.manage` too, so no gap). |
+| Admin News/Leadership/Events pages | Wired `ImageUploadField` into each create/edit modal. |
+| Public News (list + detail) and Leadership pages | Now display the uploaded image; leadership falls back to the placeholder icon when no photo is set. |
 
-## Important: a schema-correctness fix along the way
+**⚠️ Operational requirement this introduces:** unlike Phase 4's
+document uploads (which deliberately skip `storage:link` since they're
+private), **these images need it**:
 
-While wiring document uploads I caught that `application_documents.media_id`
-is a ULID column meant to reference the `media` table (per spec §39/§52's
-central polymorphic media system) — not a place to store a raw file path.
-Storing a path there would have overflowed the column and broken on a
-real database. Fixed: uploads now create a proper `Media` record first
-and store *that record's id* in `media_id`. This also means uploaded
-documents get the same metadata (filename, mime type, size) tracked
-consistently with every other media in the platform.
+```bash
+php artisan storage:link
+```
 
-## Business rules applied
+Without this, uploaded image URLs will 404.
 
-- A citizen can only create an application for an **active + published**
-  service (drafts/suspended services are rejected server-side, not just
-  hidden in the UI).
-- A citizen must have **verified identity** before applying — checked
-  server-side in `ApplicationController::store`, matching the account
-  eligibility gate from your earlier decision (only Wase, Plateau
-  residents ever reach this point anyway, but the check is explicit
-  here too).
-- Revisiting a service you already have a draft for **resumes that
-  draft** rather than creating duplicates.
-- Submission validates against the field/requirement **snapshot taken
-  when the application was created**, not the service's current
-  configuration — so an admin editing a service's fields mid-application
-  doesn't retroactively invalidate someone's in-progress submission.
+## 2. Public Wards and Facilities pages
 
-## Known limitations carried into Phase 5
+Both had working backend endpoints since the original Phase 8 delta
+but no frontend page. Now:
 
-- `payment_pending` is a dead end for now — there's no gateway wired up,
-  so paid services stop there until Phase 5 (Flutterwave integration).
-  The application detail page shows an honest "payment isn't wired up
-  yet" message rather than pretending to process anything.
-- `processing` (for free services) is also a dead end — nothing consumes
-  the `ServiceWorkflow` definition yet to actually generate a
-  certificate. That's Phase 6.
-- No admin-side application queue/exception view yet (spec §69) — that
-  becomes relevant once Phases 5–6 give applications somewhere to
-  actually fail.
+- `/wards` — list with community counts, linking to `/wards/[slug]`
+- `/wards/[slug]` — ward detail with its communities
+- `/facilities` — directory filterable by type (government office, school, health facility, market, community facility, other)
+
+## 3. Leadership reordering
+
+Up/down arrow buttons on each profile card in `/admin/leadership`,
+swapping `display_order` with the adjacent profile. Not full
+drag-and-drop, but closes the actual gap (there was previously no way
+to reorder at all).
+
+**One bug caught before it shipped:** `StoreLeadershipRequest` is
+shared between create and update, with `name` and `position` marked
+`required`. A naive reorder call sending only `{display_order}` would
+have failed validation. Fixed by having the reorder handler include
+the profile's existing `name`/`position` in the payload rather than
+loosening the shared request's validation rules (which would have
+weakened validation for the full edit-profile flow too).
+
+## Still open
+
+- **Response-shape consistency** (raw JSON vs. `{data: ...}` wrapping)
+  — flagged in the original Phase 8 delta, not touched here. Still a
+  candidate for a dedicated standardization pass, not urgent.
+- **Reordering for other `sort_order`/`display_order` fields**
+  (departments, service categories, ward listing order) — only
+  Leadership got this treatment. The same pattern could be replicated
+  for the others on request.
+- **Image galleries** (multiple images per item, using the
+  `mediables` polymorphic table) — this pass only wired up a single
+  featured image per content type. Full gallery support is more
+  relevant to Phase 9 (Tourism, heavily gallery-driven per spec §74.6)
+  and is better scoped there.
 
 ## Setup after applying
 
 ```bash
 cd backend
 composer dump-autoload
-# No `storage:link` needed — application documents intentionally use the
-# private 'local' disk (not 'public'), since citizen documents must never
-# be reachable by a guessable URL. Just confirm storage/app is writable.
+php artisan storage:link   # required — new for this delta, uploaded images 404 without it
 ```
 
-No new frontend dependencies.
+No new dependencies.

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Applications;
 
+use App\Jobs\GenerateCertificateJob;
 use App\Models\Applications\Application;
 use App\Models\Applications\ApplicationStatusHistory;
 
@@ -50,6 +51,10 @@ class SubmitApplicationAction
                 : 'Application submitted. No payment required — queued for processing.',
             'created_at' => now(),
         ]);
+
+        if ($newStatus === 'processing') {
+            GenerateCertificateJob::dispatch($application->id)->afterCommit();
+        }
 
         return ['success' => true, 'errors' => []];
     }
