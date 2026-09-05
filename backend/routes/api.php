@@ -13,11 +13,15 @@ use App\Http\Controllers\Api\V1\Admin\DepartmentController as AdminDepartmentCon
 use App\Http\Controllers\Api\V1\Admin\EventController as AdminEventController;
 use App\Http\Controllers\Api\V1\Admin\ExceptionQueueController;
 use App\Http\Controllers\Api\V1\Admin\FacilityController as AdminFacilityController;
+use App\Http\Controllers\Api\V1\Admin\GalleryController as AdminGalleryController;
+use App\Http\Controllers\Api\V1\Admin\HistoricalRecordController as AdminHistoricalRecordController;
 use App\Http\Controllers\Api\V1\Admin\LeadershipController as AdminLeadershipController;
 use App\Http\Controllers\Api\V1\Admin\LeadershipTermController;
 use App\Http\Controllers\Api\V1\Admin\MediaController;
 use App\Http\Controllers\Api\V1\Admin\NewsCategoryController as AdminNewsCategoryController;
 use App\Http\Controllers\Api\V1\Admin\NewsController as AdminNewsController;
+use App\Http\Controllers\Api\V1\Admin\NotablePeopleCategoryController as AdminNotablePeopleCategoryController;
+use App\Http\Controllers\Api\V1\Admin\NotablePersonController as AdminNotablePersonController;
 use App\Http\Controllers\Api\V1\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Api\V1\Admin\ProjectController as AdminProjectController;
 use App\Http\Controllers\Api\V1\Admin\ProjectUpdateController;
@@ -27,6 +31,8 @@ use App\Http\Controllers\Api\V1\Admin\ServiceFeeController;
 use App\Http\Controllers\Api\V1\Admin\ServiceFieldController;
 use App\Http\Controllers\Api\V1\Admin\ServiceRequirementController;
 use App\Http\Controllers\Api\V1\Admin\StaffController;
+use App\Http\Controllers\Api\V1\Admin\TourismCategoryController as AdminTourismCategoryController;
+use App\Http\Controllers\Api\V1\Admin\TouristAttractionController;
 use App\Http\Controllers\Api\V1\Admin\WardController as AdminWardController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\CitizenRegistrationController;
@@ -42,13 +48,18 @@ use App\Http\Controllers\Api\V1\Public\CertificateVerificationController;
 use App\Http\Controllers\Api\V1\Public\DepartmentController;
 use App\Http\Controllers\Api\V1\Public\EventController as PublicEventController;
 use App\Http\Controllers\Api\V1\Public\FacilityController as PublicFacilityController;
+use App\Http\Controllers\Api\V1\Public\GalleryController as PublicGalleryController;
+use App\Http\Controllers\Api\V1\Public\HistoryController;
 use App\Http\Controllers\Api\V1\Public\LeadershipController;
+use App\Http\Controllers\Api\V1\Public\MapController;
 use App\Http\Controllers\Api\V1\Public\NewsController;
+use App\Http\Controllers\Api\V1\Public\NotablePeopleController;
 use App\Http\Controllers\Api\V1\Public\PaymentCallbackController;
 use App\Http\Controllers\Api\V1\Public\PaymentStubController;
 use App\Http\Controllers\Api\V1\Public\PaymentWebhookController;
 use App\Http\Controllers\Api\V1\Public\ProjectController as PublicProjectController;
 use App\Http\Controllers\Api\V1\Public\ServiceController as PublicServiceController;
+use App\Http\Controllers\Api\V1\Public\TourismController;
 use App\Http\Controllers\Api\V1\Public\WardController as PublicWardController;
 use Illuminate\Support\Facades\Route;
 
@@ -100,6 +111,22 @@ Route::prefix('v1')->group(function () {
         Route::get('/facilities', [PublicFacilityController::class, 'index']);
         Route::get('/events', [PublicEventController::class, 'index']);
         Route::get('/events/{slug}', [PublicEventController::class, 'show']);
+
+        Route::get('/tourism', [TourismController::class, 'index']);
+        Route::get('/tourism/categories', [TourismController::class, 'categories']);
+        Route::get('/tourism/{slug}', [TourismController::class, 'show']);
+
+        Route::get('/history', [HistoryController::class, 'index']);
+        Route::get('/history/{slug}', [HistoryController::class, 'show']);
+
+        Route::get('/notable-people', [NotablePeopleController::class, 'index']);
+        Route::get('/notable-people/categories', [NotablePeopleController::class, 'categories']);
+        Route::get('/notable-people/{slug}', [NotablePeopleController::class, 'show']);
+
+        Route::get('/galleries', [PublicGalleryController::class, 'index']);
+        Route::get('/galleries/{slug}', [PublicGalleryController::class, 'show']);
+
+        Route::get('/map', [MapController::class, 'index']);
 
         // Only active + published services are ever visible here.
         Route::get('/services', [PublicServiceController::class, 'index']);
@@ -288,6 +315,35 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('events', AdminEventController::class)
                 ->only(['index', 'store', 'update', 'destroy']);
             Route::post('/events/{event}/publish', [AdminEventController::class, 'publish']);
+
+            // Discover Wase (spec §28: content_admin manages "News,
+            // History, Tourism, People, Events, Gallery" — same
+            // permission as the rest of this group).
+            Route::apiResource('tourism-categories', AdminTourismCategoryController::class)
+                ->only(['index', 'store', 'update', 'destroy']);
+            Route::apiResource('tourist-attractions', TouristAttractionController::class)
+                ->parameters(['tourist-attractions' => 'attraction'])
+                ->only(['index', 'store', 'show', 'update', 'destroy']);
+            Route::post('/tourist-attractions/{attraction}/media', [TouristAttractionController::class, 'attachMedia']);
+            Route::delete('/tourist-attractions/{attraction}/media/{media}', [TouristAttractionController::class, 'detachMedia']);
+
+            Route::apiResource('historical-records', AdminHistoricalRecordController::class)
+                ->parameters(['historical-records' => 'record'])
+                ->only(['index', 'store', 'update', 'destroy']);
+            Route::post('/historical-records/{record}/publish', [AdminHistoricalRecordController::class, 'publish']);
+
+            Route::apiResource('notable-people-categories', AdminNotablePeopleCategoryController::class)
+                ->parameters(['notable-people-categories' => 'category'])
+                ->only(['index', 'store', 'destroy']);
+            Route::apiResource('notable-people', AdminNotablePersonController::class)
+                ->parameters(['notable-people' => 'person'])
+                ->only(['index', 'store', 'show', 'update', 'destroy']);
+            Route::post('/notable-people/{person}/publish', [AdminNotablePersonController::class, 'publish']);
+
+            Route::apiResource('galleries', AdminGalleryController::class)
+                ->only(['index', 'store', 'show', 'update', 'destroy']);
+            Route::post('/galleries/{gallery}/media', [AdminGalleryController::class, 'attachMedia']);
+            Route::delete('/galleries/{gallery}/media/{media}', [AdminGalleryController::class, 'detachMedia']);
         });
 
         // Projects — gated by 'projects.manage' (project_admin,

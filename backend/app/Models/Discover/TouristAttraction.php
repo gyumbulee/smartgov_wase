@@ -2,14 +2,14 @@
 
 namespace App\Models\Discover;
 
+use App\Models\Concerns\HasGalleryMedia;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TouristAttraction extends Model
 {
-    use SoftDeletes;
+    use HasGalleryMedia, SoftDeletes;
 
     protected $keyType = 'string';
     public $incrementing = false;
@@ -30,4 +30,3 @@ class TouristAttraction extends Model
         return $this->belongsTo(TourismCategory::class, 'category_id');
     }
 }
-

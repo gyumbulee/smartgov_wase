@@ -1,96 +1,124 @@
-# SmartGov-Wase — Phase 8 Follow-up (Image Uploads + Missing Public Pages + Leadership Reorder)
+# SmartGov-Wase — Phase 9 Delta (Discover Wase)
 
-Closes three of the four items flagged at the end of the Phase 8 delta.
-The fourth (response-shape consistency) remains an open, non-urgent
-item — not addressed here, still flagged for a dedicated pass.
+Per spec §38 Phase 9: Tourism, History, Notable People, Galleries, and
+Maps. This is the platform's most image-heavy section (spec §74.6-74.11)
+— it uses real gallery support built on the `mediables` polymorphic
+table the schema was designed for since Phase 1, rather than another
+single-image field.
 
-## 1. Image uploads — the most consequential fix
+One new dependency: `leaflet` (+ `@types/leaflet`) for the public map,
+per spec §48/§74.11's explicit recommendation of OpenStreetMap + Leaflet.
 
-**A security-relevant design decision came before any code:** application
-documents and certificate PDFs are stored on the **private** `local`
-disk (correct — they must never be publicly reachable by URL). Content
-images (news, leadership, events) need to be **publicly viewable**. A
-naive "serve any media by ID" endpoint would have let anyone download
-private citizen documents just by guessing an ID. Instead:
+## The gallery architecture, explained
 
-- New uploads for public content go to a **separate `public` disk**,
-  handled by a controller (`MediaController`) that has no ownership
-  check and no reason for one — everything through it is meant to be
-  public. `ApplicationDocumentController` and certificate generation
-  are untouched and still use `local`.
+`HasGalleryMedia` is a new trait providing a `morphToMany` relation
+against `mediables` — this table's `mediable_type`/`mediable_id`
+columns already followed Laravel's standard polymorphic naming
+convention (for the morph name `mediable`), so this is a native
+Eloquent relation, not a custom pivot workaround. Applied to
+`TouristAttraction`, giving it `attachGalleryMedia()` / `detachGalleryMedia()`.
+`NotablePerson` didn't need it — it already had a single `photo_media_id`
+column, matching how a portrait (one image) differs from a tourism
+gallery (many images).
 
-### NEW FILES
-| File | Purpose |
-|---|---|
-| `backend/app/Http/Requests/Admin/UploadMediaRequest.php` | Validates image uploads (5MB max, images only). |
-| `backend/app/Http/Resources/MediaResource.php` | Returns the uploaded media's public URL, dimensions, alt text. |
-| `backend/app/Http/Controllers/Api/V1/Admin/MediaController.php` | `POST /admin/media` (upload), `DELETE /admin/media/{media}` — refuses to delete anything not on the `public` disk, as a second guard against misuse. |
-| `frontend/components/admin/ImageUploadField.tsx` | Reusable upload-with-preview component — used identically across News, Leadership, and Events. |
+Standalone `Gallery` (spec §53) uses its own pre-existing `gallery_media`
+pivot rather than `mediables` — a gallery *is* a curated image
+collection in its own right, distinct from "images attached to some
+other piece of content."
 
-### MODIFIED
+## Backend — 6 admin controllers, 4 public controllers, 1 map aggregator
+
+| Content type | Admin permission | Notes |
+|---|---|---|
+| Tourism categories + attractions | `content.manage` | Attractions get dedicated gallery attach/detach endpoints. |
+| Historical records | `content.manage` | draft → published pipeline, same pattern as News/Events. `sources` isn't required by validation (a draft-while-researching entry is still allowed) but is present on every response so the public timeline can render its presence or honest absence. |
+| Notable people categories + people | `content.manage` | draft → **review** → published (spec §40's extra editorial step — no fabricated biographies). `biography` is required; `sources` isn't. |
+| Galleries | `content.manage` | Own attach/detach endpoints via `gallery_media`. |
+
+All gated by the existing `content.manage` permission — spec §28 states
+`content_admin` manages exactly "News, History, Tourism, People, Events,
+Gallery," so no new permission was needed.
+
+**Public endpoints**, all filtering to published/active only:
+`GET /public/tourism` (+`/categories`, `/{slug}`), `/public/history`
+(+`/{slug}`), `/public/notable-people` (+`/categories`, `/{slug}`),
+`/public/galleries` (+`/{slug}`), and `GET /public/map` — which
+aggregates geolocated markers from tourist attractions, active
+facilities, in-progress/completed projects, and communities into one
+array, so the frontend makes a single request rather than four.
+
+## Frontend — 6 new admin pages, 10 new public pages
+
+**Admin:** Tourism (list + a genuinely substantial detail page — the
+gallery grid with inline upload/remove is the centerpiece, per spec
+§74.6), History, Notable People (with the portrait upload reused from
+Phase 8's `ImageUploadField`), Galleries (list + detail with the same
+gallery-grid pattern).
+
+**Public:** `/discover` (a hub page — the nav and footer already linked
+here since Phase 1 and it 404'd the whole time), `/discover/tourism`
+(+ detail with photo gallery and a "View on map" link), `/discover/history`
+(rendered as an actual timeline per spec §74.7, not a wall of text —
+vertical line, period labels, chronological), `/discover/notable-people`
+(+ detail), `/discover/gallery` (+ detail with a lightbox), and `/map`.
+
+## The map — one deliberate implementation choice
+
+Leaflet touches `window`/`document` at import time, which breaks
+Next.js server-side rendering if imported normally. The map component
+uses a **dynamic `import('leaflet')` inside a `useEffect`**, keeping it
+out of the SSR bundle entirely. The CSS, by contrast, is a **static**
+`import "leaflet/dist/leaflet.css"` at the top of the file — CSS has no
+runtime `window` dependency, and Next.js App Router supports importing
+CSS in any client component, not just the root layout. (An earlier
+draft of this file tried to dynamically `import()` the CSS file
+alongside the JS, which isn't a reliable pattern — caught and fixed
+before packaging.)
+
+The map reads `?lat=` and `?lng=` query params to center and zoom on a
+specific point — the tourism detail page's "View on map" link uses
+this to jump straight to an attraction's location.
+
+## MODIFIED FILES
+
 | File | What changed |
 |---|---|
-| `StoreNewsRequest.php`, `StoreLeadershipRequest.php`, `StoreEventRequest.php` | Accept `featured_image_id` / `photo_media_id`. |
-| `NewsResource.php`, `LeadershipResource.php`, `EventResource.php` | Resolve and return the image URL when set. |
-| `routes/api.php` | Added the media routes, gated by `content.manage` (the only role with `news.publish` — `content_admin` — already has `content.manage` too, so no gap). |
-| Admin News/Leadership/Events pages | Wired `ImageUploadField` into each create/edit modal. |
-| Public News (list + detail) and Leadership pages | Now display the uploaded image; leadership falls back to the placeholder icon when no photo is set. |
+| `backend/app/Models/Discover/TouristAttraction.php` | Added `HasGalleryMedia`. |
+| `backend/routes/api.php` | All new admin/public routes. |
+| `frontend/package.json` | Added `leaflet` + `@types/leaflet`. |
+| `frontend/app/(admin)/layout.tsx` | Added Tourism, History, Notable People, Galleries nav links (22 items now — the scrollable sidebar from the Phase 8 follow-up handles this without the earlier overflow bug recurring). |
 
-**⚠️ Operational requirement this introduces:** unlike Phase 4's
-document uploads (which deliberately skip `storage:link` since they're
-private), **these images need it**:
+## Known limitations carried forward
 
-```bash
-php artisan storage:link
-```
-
-Without this, uploaded image URLs will 404.
-
-## 2. Public Wards and Facilities pages
-
-Both had working backend endpoints since the original Phase 8 delta
-but no frontend page. Now:
-
-- `/wards` — list with community counts, linking to `/wards/[slug]`
-- `/wards/[slug]` — ward detail with its communities
-- `/facilities` — directory filterable by type (government office, school, health facility, market, community facility, other)
-
-## 3. Leadership reordering
-
-Up/down arrow buttons on each profile card in `/admin/leadership`,
-swapping `display_order` with the adjacent profile. Not full
-drag-and-drop, but closes the actual gap (there was previously no way
-to reorder at all).
-
-**One bug caught before it shipped:** `StoreLeadershipRequest` is
-shared between create and update, with `name` and `position` marked
-`required`. A naive reorder call sending only `{display_order}` would
-have failed validation. Fixed by having the reorder handler include
-the profile's existing `name`/`position` in the payload rather than
-loosening the shared request's validation rules (which would have
-weakened validation for the full edit-profile flow too).
-
-## Still open
-
-- **Response-shape consistency** (raw JSON vs. `{data: ...}` wrapping)
-  — flagged in the original Phase 8 delta, not touched here. Still a
-  candidate for a dedicated standardization pass, not urgent.
-- **Reordering for other `sort_order`/`display_order` fields**
-  (departments, service categories, ward listing order) — only
-  Leadership got this treatment. The same pattern could be replicated
-  for the others on request.
-- **Image galleries** (multiple images per item, using the
-  `mediables` polymorphic table) — this pass only wired up a single
-  featured image per content type. Full gallery support is more
-  relevant to Phase 9 (Tourism, heavily gallery-driven per spec §74.6)
-  and is better scoped there.
+- **No drag-to-reorder for gallery images** — attaching a new photo
+  appends it; reordering existing ones means detach-and-reattach.
+  Matches the "no reordering UI" limitation already flagged for other
+  content types in Phase 8.
+- **The map has no clustering** — with more than a couple dozen markers
+  in one area it'll get visually crowded. Fine for the current expected
+  volume; worth revisiting if the platform grows significantly.
+- **Wards aren't shown on the map** — they're stored as boundary
+  `map_coordinates` JSON (polygon-shaped data), not a simple lat/lng
+  point like everything else `MapController` aggregates. Rendering
+  ward boundaries as map overlays (rather than point markers) is a
+  distinct, larger piece of work than this pass covers.
+- **No caption/alt-text editing UI** for gallery images after upload —
+  `Media.alt_text`/`credit` exist and are returned by the API, but
+  there's no admin form field to set them post-upload (the initial
+  `ImageUploadField` doesn't collect them either — see Phase 8's
+  follow-up notes on the same gap).
 
 ## Setup after applying
 
 ```bash
-cd backend
+cd frontend
+npm install   # pulls in leaflet + @types/leaflet
+
+cd ../backend
 composer dump-autoload
-php artisan storage:link   # required — new for this delta, uploaded images 404 without it
 ```
 
-No new dependencies.
+No new migrations — every table this phase uses (`tourism_categories`,
+`tourist_attractions`, `historical_records`, `notable_people_categories`,
+`notable_people`, `galleries`, `gallery_media`, `mediables`) existed
+since Phase 1.

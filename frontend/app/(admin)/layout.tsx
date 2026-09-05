@@ -21,6 +21,10 @@ import {
   Home,
   Building,
   Calendar,
+  Compass,
+  BookOpen,
+  UserRound,
+  Images,
 } from "lucide-react";
 
 const NAV = [
@@ -34,6 +38,10 @@ const NAV = [
   { href: "/admin/leadership", label: "Leadership", icon: UserSquare2 },
   { href: "/admin/projects", label: "Projects", icon: Construction },
   { href: "/admin/events", label: "Events", icon: Calendar },
+  { href: "/admin/tourism", label: "Tourism", icon: Compass },
+  { href: "/admin/history", label: "History", icon: BookOpen },
+  { href: "/admin/notable-people", label: "Notable People", icon: UserRound },
+  { href: "/admin/galleries", label: "Galleries", icon: Images },
   { href: "/admin/wards", label: "Wards", icon: MapPin },
   { href: "/admin/communities", label: "Communities", icon: Home },
   { href: "/admin/facilities", label: "Facilities", icon: Building },

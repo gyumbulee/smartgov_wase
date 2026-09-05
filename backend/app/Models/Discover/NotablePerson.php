@@ -5,7 +5,6 @@ namespace App\Models\Discover;
 use App\Models\Government\Community;
 use App\Models\Government\Ward;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -48,4 +47,3 @@ class NotablePerson extends Model
         return $this->belongsTo(Ward::class);
     }
 }
-
