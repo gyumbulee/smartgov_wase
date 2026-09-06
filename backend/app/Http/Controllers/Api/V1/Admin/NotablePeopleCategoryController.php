@@ -12,9 +12,7 @@ class NotablePeopleCategoryController extends Controller
 {
     public function index()
     {
-        return NotablePeopleCategoryResource::collection(
-            NotablePeopleCategory::orderBy('name')->get()
-        );
+        return NotablePeopleCategoryResource::collection(NotablePeopleCategory::orderBy('name')->get());
     }
 
     public function store(StoreNotablePeopleCategoryRequest $request)
@@ -30,15 +28,10 @@ class NotablePeopleCategoryController extends Controller
     public function destroy(NotablePeopleCategory $category)
     {
         if ($category->people()->exists()) {
-            return response()->json([
-                'message' => 'Cannot delete a category with people assigned to it.',
-            ], 422);
+            return response()->json(['message' => 'Cannot delete a category with people assigned to it.'], 422);
         }
-
         $category->delete();
 
-        return response()->json([
-            'message' => 'Category deleted.',
-        ]);
+        return response()->json(['message' => 'Category deleted.']);
     }
 }

@@ -9,8 +9,8 @@ use App\Models\Discover\NotablePerson;
 use Illuminate\Support\Str;
 
 /**
- * spec §40: profiles go through an editorial approval process before
- * publication — draft -> review -> published. publish() is the only
+ * spec Â§40: profiles go through an editorial approval process before
+ * publication â€” draft -> review -> published. publish() is the only
  * action that sets published_at, matching the News/Events pattern
  * elsewhere in the platform.
  */
@@ -36,15 +36,11 @@ class NotablePersonController extends Controller
 
     public function show(NotablePerson $person)
     {
-        return new NotablePersonResource(
-            $person->load('category', 'community', 'ward')
-        );
+        return new NotablePersonResource($person->load('category', 'community', 'ward'));
     }
 
-    public function update(
-        StoreNotablePersonRequest $request,
-        NotablePerson $person
-    ) {
+    public function update(StoreNotablePersonRequest $request, NotablePerson $person)
+    {
         $person->update($request->validated());
 
         return new NotablePersonResource($person->load('category'));
@@ -52,10 +48,7 @@ class NotablePersonController extends Controller
 
     public function publish(NotablePerson $person)
     {
-        $person->update([
-            'status' => 'published',
-            'published_at' => now(),
-        ]);
+        $person->update(['status' => 'published', 'published_at' => now()]);
 
         return new NotablePersonResource($person);
     }
@@ -64,8 +57,6 @@ class NotablePersonController extends Controller
     {
         $person->delete();
 
-        return response()->json([
-            'message' => 'Profile deleted.',
-        ]);
+        return response()->json(['message' => 'Profile deleted.']);
     }
 }

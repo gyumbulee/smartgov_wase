@@ -9,9 +9,9 @@ use App\Models\Discover\HistoricalRecord;
 use Illuminate\Support\Str;
 
 /**
- * spec §39: "Use credible sources and clearly distinguish documented
+ * spec Â§39: "Use credible sources and clearly distinguish documented
  * history from oral traditions." The `sources` field is where that
- * distinction lives — not enforced by validation (a source-free draft
+ * distinction lives â€” not enforced by validation (a source-free draft
  * is still allowed while researching), but present in every response
  * so the public page can render it or its absence honestly.
  */
@@ -35,10 +35,8 @@ class HistoricalRecordController extends Controller
         return new HistoricalRecordResource($record);
     }
 
-    public function update(
-        StoreHistoricalRecordRequest $request,
-        HistoricalRecord $record
-    ) {
+    public function update(StoreHistoricalRecordRequest $request, HistoricalRecord $record)
+    {
         $record->update($request->validated());
 
         return new HistoricalRecordResource($record);
@@ -46,10 +44,7 @@ class HistoricalRecordController extends Controller
 
     public function publish(HistoricalRecord $record)
     {
-        $record->update([
-            'status' => 'published',
-            'published_at' => now(),
-        ]);
+        $record->update(['status' => 'published', 'published_at' => now()]);
 
         return new HistoricalRecordResource($record);
     }
@@ -58,8 +53,6 @@ class HistoricalRecordController extends Controller
     {
         $record->delete();
 
-        return response()->json([
-            'message' => 'Record deleted.',
-        ]);
+        return response()->json(['message' => 'Record deleted.']);
     }
 }

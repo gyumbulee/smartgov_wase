@@ -6,15 +6,11 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreTouristAttractionRequest extends FormRequest
 {
-    public function authorize(): bool
-    {
-        return true;
-    }
+    public function authorize(): bool { return true; }
 
     public function rules(): array
     {
         $id = $this->route('attraction');
-
         return [
             'name' => ['required', 'string', 'max:200'],
             'slug' => ['nullable', 'string', 'max:200', 'unique:tourist_attractions,slug,'.$id],

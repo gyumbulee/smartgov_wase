@@ -12,11 +12,7 @@ class TourismCategoryController extends Controller
 {
     public function index()
     {
-        return TourismCategoryResource::collection(
-            TourismCategory::withCount('attractions')
-                ->orderBy('sort_order')
-                ->get()
-        );
+        return TourismCategoryResource::collection(TourismCategory::withCount('attractions')->orderBy('sort_order')->get());
     }
 
     public function store(StoreTourismCategoryRequest $request)
@@ -29,10 +25,8 @@ class TourismCategoryController extends Controller
         return new TourismCategoryResource($category);
     }
 
-    public function update(
-        StoreTourismCategoryRequest $request,
-        TourismCategory $tourismCategory
-    ) {
+    public function update(StoreTourismCategoryRequest $request, TourismCategory $tourismCategory)
+    {
         $tourismCategory->update($request->validated());
 
         return new TourismCategoryResource($tourismCategory);
@@ -41,15 +35,10 @@ class TourismCategoryController extends Controller
     public function destroy(TourismCategory $tourismCategory)
     {
         if ($tourismCategory->attractions()->exists()) {
-            return response()->json([
-                'message' => 'Cannot delete a category with attractions assigned to it.',
-            ], 422);
+            return response()->json(['message' => 'Cannot delete a category with attractions assigned to it.'], 422);
         }
-
         $tourismCategory->delete();
 
-        return response()->json([
-            'message' => 'Category deleted.',
-        ]);
+        return response()->json(['message' => 'Category deleted.']);
     }
 }

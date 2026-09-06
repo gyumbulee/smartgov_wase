@@ -26,8 +26,7 @@ class NotablePeopleController extends Controller
 
     public function show(string $slug)
     {
-        $person = NotablePerson::where('slug', $slug)
-            ->where('status', 'published')
+        $person = NotablePerson::where('slug', $slug)->where('status', 'published')
             ->with('category', 'community', 'ward')
             ->firstOrFail();
 
@@ -36,8 +35,6 @@ class NotablePeopleController extends Controller
 
     public function categories()
     {
-        return response()->json(
-            NotablePeopleCategory::orderBy('name')->get()
-        );
+        return response()->json(NotablePeopleCategory::orderBy('name')->get());
     }
 }

@@ -6,15 +6,11 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreHistoricalRecordRequest extends FormRequest
 {
-    public function authorize(): bool
-    {
-        return true;
-    }
+    public function authorize(): bool { return true; }
 
     public function rules(): array
     {
         $id = $this->route('record');
-
         return [
             'title' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', 'unique:historical_records,slug,'.$id],

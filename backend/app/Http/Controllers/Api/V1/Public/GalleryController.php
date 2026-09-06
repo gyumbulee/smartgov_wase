@@ -11,19 +11,13 @@ class GalleryController extends Controller
     public function index()
     {
         return GalleryResource::collection(
-            Gallery::where('status', 'published')
-                ->withCount('media')
-                ->orderByDesc('created_at')
-                ->get()
+            Gallery::where('status', 'published')->withCount('media')->orderByDesc('created_at')->get()
         );
     }
 
     public function show(string $slug)
     {
-        $gallery = Gallery::where('slug', $slug)
-            ->where('status', 'published')
-            ->with('media')
-            ->firstOrFail();
+        $gallery = Gallery::where('slug', $slug)->where('status', 'published')->with('media')->firstOrFail();
 
         return new GalleryResource($gallery);
     }

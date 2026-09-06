@@ -27,8 +27,7 @@ class TourismController extends Controller
 
     public function show(string $slug)
     {
-        $attraction = TouristAttraction::where('slug', $slug)
-            ->where('status', 'published')
+        $attraction = TouristAttraction::where('slug', $slug)->where('status', 'published')
             ->with(['category', 'galleryMedia'])
             ->firstOrFail();
 
@@ -40,9 +39,7 @@ class TourismController extends Controller
 
     public function categories()
     {
-        $categories = TourismCategory::withCount([
-            'attractions' => fn ($q) => $q->where('status', 'published'),
-        ])
+        $categories = TourismCategory::withCount(['attractions' => fn ($q) => $q->where('status', 'published')])
             ->orderBy('sort_order')
             ->get();
 
