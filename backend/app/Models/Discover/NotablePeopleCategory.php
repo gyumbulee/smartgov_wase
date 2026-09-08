@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class NotablePeopleCategory extends Model
 {
+    use HasUlids;
+
     protected $keyType = 'string';
     public $incrementing = false;
 

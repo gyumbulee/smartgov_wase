@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CertificateTemplate extends Model
 {
-    use SoftDeletes;
+    use HasUlids, SoftDeletes;
 
     protected $keyType = 'string';
     public $incrementing = false;

@@ -25,6 +25,10 @@ import {
   BookOpen,
   UserRound,
   Images,
+  MessageSquareWarning,
+  Mail,
+  HelpCircle,
+  FileStack,
 } from "lucide-react";
 
 const NAV = [
@@ -45,6 +49,10 @@ const NAV = [
   { href: "/admin/wards", label: "Wards", icon: MapPin },
   { href: "/admin/communities", label: "Communities", icon: Home },
   { href: "/admin/facilities", label: "Facilities", icon: Building },
+  { href: "/admin/complaints", label: "Complaints", icon: MessageSquareWarning },
+  { href: "/admin/contact-messages", label: "Contact Messages", icon: Mail },
+  { href: "/admin/faqs", label: "FAQs", icon: HelpCircle },
+  { href: "/admin/documents", label: "Documents", icon: FileStack },
   { href: "/admin/citizens", label: "Citizens", icon: Users },
   { href: "/admin/departments", label: "Departments", icon: Building2 },
   { href: "/admin/exceptions", label: "Exceptions", icon: AlertTriangle },

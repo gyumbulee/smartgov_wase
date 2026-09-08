@@ -1,3 +1,5 @@
+import type { Service } from "./service";
+
 export type ApplicationStatus =
   | "draft"
   | "submitted"
@@ -31,7 +33,12 @@ export interface Application {
   application_reference: string;
   status: ApplicationStatus;
   current_step: string | null;
-  service: { id: string; name: string; slug: string } | null;
+  // Full service definition (fields/requirements included) so the
+  // citizen application screen can render the form directly from the
+  // application response, without a second call to the public services
+  // endpoint — that endpoint 404s once a service is suspended/unpublished,
+  // even though an existing application for it must still be viewable.
+  service: Service | null;
   fee: number | null;
   currency: string | null;
   requires_payment: boolean | null;

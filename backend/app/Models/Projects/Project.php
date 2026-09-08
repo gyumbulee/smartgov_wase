@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Project extends Model
 {
-    use SoftDeletes;
+    use HasUlids, SoftDeletes;
 
     protected $keyType = 'string';
     public $incrementing = false;

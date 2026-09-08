@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 
 class Event extends Model
 {
+    use HasUlids;
+
     protected $keyType = 'string';
     public $incrementing = false;
 

@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Notification extends Model
 {
+    use HasUlids;
+
     protected $table = 'notifications';
     protected $keyType = 'string';
     public $incrementing = false;

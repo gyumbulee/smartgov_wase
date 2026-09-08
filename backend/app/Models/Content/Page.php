@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Page extends Model
 {
-    use SoftDeletes;
+    use HasUlids, SoftDeletes;
 
     protected $keyType = 'string';
     public $incrementing = false;

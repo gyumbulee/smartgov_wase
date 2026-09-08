@@ -2,6 +2,7 @@
 
 namespace App\Models\Certificates;
 
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class NumberingSequence extends Model
 {
+    use HasUlids;
+
     protected $keyType = 'string';
     public $incrementing = false;
 

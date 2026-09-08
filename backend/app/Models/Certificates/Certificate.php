@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Certificate extends Model
 {
+    use HasUlids;
+
     protected $keyType = 'string';
     public $incrementing = false;
 

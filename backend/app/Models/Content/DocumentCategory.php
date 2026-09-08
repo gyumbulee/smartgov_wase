@@ -3,7 +3,7 @@
 namespace App\Models\Content;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUlids;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DocumentCategory extends Model
 {
@@ -11,5 +11,9 @@ class DocumentCategory extends Model
     public $incrementing = false;
 
     protected $fillable = ['name', 'slug', 'description'];
-}
 
+    public function documents(): HasMany
+    {
+        return $this->hasMany(Document::class, 'category_id');
+    }
+}

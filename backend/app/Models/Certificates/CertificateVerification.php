@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CertificateVerification extends Model
 {
+    use HasUlids;
+
     protected $keyType = 'string';
     public $incrementing = false;
     public $timestamps = false;

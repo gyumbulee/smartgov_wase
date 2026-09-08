@@ -20,11 +20,13 @@ class ApplicationResource extends JsonResource
             'application_reference' => $this->application_reference,
             'status' => $this->status,
             'current_step' => $this->current_step,
-            'service' => $this->whenLoaded('service', fn () => [
-                'id' => $this->service->id,
-                'name' => $this->service->name,
-                'slug' => $this->service->slug,
-            ]),
+            // Full service definition (including form fields and document
+            // requirements), not just the id/name/slug — the citizen
+            // application screen renders the form straight from this rather
+            // than making a second call to the *public* services endpoint,
+            // which 404s the moment a service is suspended/unpublished even
+            // though the citizen's own application still needs to render.
+            'service' => $this->whenLoaded('service', fn () => new ServiceResource($this->service)),
             'fee' => $this->configuration_snapshot['fee'] ?? null,
             'currency' => $this->configuration_snapshot['currency'] ?? null,
             'requires_payment' => $this->configuration_snapshot['requires_payment'] ?? null,

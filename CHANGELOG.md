@@ -1,124 +1,122 @@
-# SmartGov-Wase — Phase 9 Delta (Discover Wase)
+# SmartGov-Wase — Phase 10 Delta (Civic Engagement)
 
-Per spec §38 Phase 9: Tourism, History, Notable People, Galleries, and
-Maps. This is the platform's most image-heavy section (spec §74.6-74.11)
-— it uses real gallery support built on the `mediables` polymorphic
-table the schema was designed for since Phase 1, rather than another
-single-image field.
+Per spec §38 Phase 10: Complaints, Contact, FAQs, Documents,
+Notifications. All models for this phase already existed since Phase 1
+— nothing had ever been built on top of them until now. No new
+migrations, no new dependencies.
 
-One new dependency: `leaflet` (+ `@types/leaflet`) for the public map,
-per spec §48/§74.11's explicit recommendation of OpenStreetMap + Leaflet.
+## Complaints (spec §47) — the platform's one genuine manual workflow
 
-## The gallery architecture, explained
+Unlike certificate applications, complaints are explicitly *not*
+automated — staff work these by hand, and every status change is
+recorded as a real `complaint_updates` entry, giving citizens an
+honest timeline rather than a synthetic one.
 
-`HasGalleryMedia` is a new trait providing a `morphToMany` relation
-against `mediables` — this table's `mediable_type`/`mediable_id`
-columns already followed Laravel's standard polymorphic naming
-convention (for the morph name `mediable`), so this is a native
-Eloquent relation, not a custom pivot workaround. Applied to
-`TouristAttraction`, giving it `attachGalleryMedia()` / `detachGalleryMedia()`.
-`NotablePerson` didn't need it — it already had a single `photo_media_id`
-column, matching how a portrait (one image) differs from a tourism
-gallery (many images).
+- **Citizen:** submit a complaint (category, title, description,
+  location), view own complaints with full status history.
+- **Admin:** list/filter by status, view detail, update status with an
+  optional note to the citizen, manage complaint categories.
+- Gated by the existing `complaints.manage` permission (currently only
+  `super_admin`/`lga_admin` have it, per the Phase 1 seeder — no new
+  role was invented for this).
 
-Standalone `Gallery` (spec §53) uses its own pre-existing `gallery_media`
-pivot rather than `mediables` — a gallery *is* a curated image
-collection in its own right, distinct from "images attached to some
-other piece of content."
+**A missing relation caught along the way:** `ComplaintCategory` had no
+`complaints()` relation despite the controller needing
+`$category->complaints()->exists()` to block deleting a category still
+in use. Added.
 
-## Backend — 6 admin controllers, 4 public controllers, 1 map aggregator
+## Contact, FAQs, Documents
 
-| Content type | Admin permission | Notes |
-|---|---|---|
-| Tourism categories + attractions | `content.manage` | Attractions get dedicated gallery attach/detach endpoints. |
-| Historical records | `content.manage` | draft → published pipeline, same pattern as News/Events. `sources` isn't required by validation (a draft-while-researching entry is still allowed) but is present on every response so the public timeline can render its presence or honest absence. |
-| Notable people categories + people | `content.manage` | draft → **review** → published (spec §40's extra editorial step — no fabricated biographies). `biography` is required; `sources` isn't. |
-| Galleries | `content.manage` | Own attach/detach endpoints via `gallery_media`. |
+- **Contact:** public submission form (no auth) → `contact_messages`;
+  admin inbox with status workflow (new/read/in_progress/resolved/spam).
+- **FAQs:** admin CRUD; public listing filterable by service or category
+  (so a service detail page could eventually show only its own FAQs).
+- **Documents:** admin upload (PDF/Word/Excel, 10MB max) and public
+  library with search. Like Phase 8/8-followup's content images, these
+  go on the **public** disk — distinct from Phase 4's citizen
+  application documents, which stay on the private `local` disk.
+  Public documents are meant to be downloadable by anyone; citizen
+  documents never are.
 
-All gated by the existing `content.manage` permission — spec §28 states
-`content_admin` manages exactly "News, History, Tourism, People, Events,
-Gallery," so no new permission was needed.
+**Another missing relation caught:** `DocumentCategory` had no
+`documents()` relation, needed for the same "block delete if in use"
+guard. Added.
 
-**Public endpoints**, all filtering to published/active only:
-`GET /public/tourism` (+`/categories`, `/{slug}`), `/public/history`
-(+`/{slug}`), `/public/notable-people` (+`/categories`, `/{slug}`),
-`/public/galleries` (+`/{slug}`), and `GET /public/map` — which
-aggregates geolocated markers from tourist attractions, active
-facilities, in-progress/completed projects, and communities into one
-array, so the frontend makes a single request rather than four.
+## Notifications — closing a gap open since Phase 5
 
-## Frontend — 6 new admin pages, 10 new public pages
+Notifications have been created internally since Phase 5 (payment
+confirmed) and Phase 6 (certificate ready) — but there was **never an
+endpoint or page to view them**. The bell icon in the citizen header
+has been purely decorative since Phase 4. Now:
 
-**Admin:** Tourism (list + a genuinely substantial detail page — the
-gallery grid with inline upload/remove is the centerpiece, per spec
-§74.6), History, Notable People (with the portrait upload reused from
-Phase 8's `ImageUploadField`), Galleries (list + detail with the same
-gallery-grid pattern).
+- `GET /citizen/notifications` (paginated list), `/unread-count`,
+  `POST /{id}/read`, `POST /read-all`.
+- The header bell now shows a real unread-count badge and links to a
+  proper notification center page (spec §24's read/unread + mark-all
+  pattern).
 
-**Public:** `/discover` (a hub page — the nav and footer already linked
-here since Phase 1 and it 404'd the whole time), `/discover/tourism`
-(+ detail with photo gallery and a "View on map" link), `/discover/history`
-(rendered as an actual timeline per spec §74.7, not a wall of text —
-vertical line, period labels, chronological), `/discover/notable-people`
-(+ detail), `/discover/gallery` (+ detail with a lightbox), and `/map`.
+## A routing bug caught before shipping
 
-## The map — one deliberate implementation choice
+`publicCivicService.complaintCategories()` initially pointed at
+`/admin/complaint-categories` — which is gated by `permission:complaints.manage`.
+An unauthenticated (or authenticated-but-non-admin) citizen filing a
+complaint would have gotten a 403 just trying to load the category
+dropdown. Fixed by adding a proper public endpoint
+(`GET /public/complaint-categories`, read-only, active categories only)
+and pointing the frontend at that instead.
 
-Leaflet touches `window`/`document` at import time, which breaks
-Next.js server-side rendering if imported normally. The map component
-uses a **dynamic `import('leaflet')` inside a `useEffect`**, keeping it
-out of the SSR bundle entirely. The CSS, by contrast, is a **static**
-`import "leaflet/dist/leaflet.css"` at the top of the file — CSS has no
-runtime `window` dependency, and Next.js App Router supports importing
-CSS in any client component, not just the root layout. (An earlier
-draft of this file tried to dynamically `import()` the CSS file
-alongside the JS, which isn't a reliable pattern — caught and fixed
-before packaging.)
+## Three more 404s closed
 
-The map reads `?lat=` and `?lng=` query params to center and zoom on a
-specific point — the tourism detail page's "View on map" link uses
-this to jump straight to an attraction's location.
+The public nav/footer have linked to `/contact` (top nav, since Phase 1),
+`/documents`, and `/faq` (footer, since Phase 1) — all three 404'd
+until now, same pattern as `/discover`, `/leadership`, and `/departments`
+being dead links from Phase 1 through Phase 8/9. All three are real
+pages now.
 
 ## MODIFIED FILES
 
 | File | What changed |
 |---|---|
-| `backend/app/Models/Discover/TouristAttraction.php` | Added `HasGalleryMedia`. |
-| `backend/routes/api.php` | All new admin/public routes. |
-| `frontend/package.json` | Added `leaflet` + `@types/leaflet`. |
-| `frontend/app/(admin)/layout.tsx` | Added Tourism, History, Notable People, Galleries nav links (22 items now — the scrollable sidebar from the Phase 8 follow-up handles this without the earlier overflow bug recurring). |
+| `backend/app/Models/Complaints/ComplaintCategory.php` | Added `complaints()` relation. |
+| `backend/app/Models/Content/DocumentCategory.php` | Added `documents()` relation. |
+| `backend/routes/api.php` | All new citizen/admin/public routes for this phase. |
+| `frontend/app/(citizen)/layout.tsx` | Bell icon now shows a real unread badge and links to `/notifications`; added "Complaints" nav link. |
+| `frontend/app/(admin)/layout.tsx` | Added Complaints, Contact Messages, FAQs, Documents nav links (26 items now — the scrollable sidebar handles it). |
+
+## Business rules applied
+
+- **Complaints are honest about being manual.** No automated
+  "processing" language anywhere in this flow — status changes only
+  happen when an admin explicitly makes them, and the reason is always
+  recorded.
+- **Public vs. private document storage stays consistent** with the
+  separation established in Phase 8/8-followup: anything meant for
+  public download uses the `public` disk; anything citizen-specific
+  stays on `local`. This phase didn't blur that line.
+- **Contact form has no auth requirement** — matches spec's framing of
+  it as a general public inquiry channel, not a citizen-account feature.
 
 ## Known limitations carried forward
 
-- **No drag-to-reorder for gallery images** — attaching a new photo
-  appends it; reordering existing ones means detach-and-reattach.
-  Matches the "no reordering UI" limitation already flagged for other
-  content types in Phase 8.
-- **The map has no clustering** — with more than a couple dozen markers
-  in one area it'll get visually crowded. Fine for the current expected
-  volume; worth revisiting if the platform grows significantly.
-- **Wards aren't shown on the map** — they're stored as boundary
-  `map_coordinates` JSON (polygon-shaped data), not a simple lat/lng
-  point like everything else `MapController` aggregates. Rendering
-  ward boundaries as map overlays (rather than point markers) is a
-  distinct, larger piece of work than this pass covers.
-- **No caption/alt-text editing UI** for gallery images after upload —
-  `Media.alt_text`/`credit` exist and are returned by the API, but
-  there's no admin form field to set them post-upload (the initial
-  `ImageUploadField` doesn't collect them either — see Phase 8's
-  follow-up notes on the same gap).
+- **No file attachments on complaints** — a citizen reporting a
+  pothole can't attach a photo. The `complaints` table has no
+  media/attachment column; adding one would need a small schema
+  addition. Flag if this is worth prioritizing.
+- **No notification preferences UI** — `notification_preferences`
+  table exists since Phase 1 (email/SMS toggles per notification type)
+  but nothing reads or writes it yet. All notifications are in-app/
+  database-only regardless of what a citizen might want.
+- **FAQ categories are freeform strings**, not a managed taxonomy like
+  News/Tourism categories — matches the schema (`faqs.category` is a
+  plain string column, not a foreign key), so no admin "manage FAQ
+  categories" page was needed, but also means no autocomplete/dropdown
+  when creating one — just a text field.
 
 ## Setup after applying
 
-```bash
-cd frontend
-npm install   # pulls in leaflet + @types/leaflet
+No new dependencies or migrations. Just drop the files in.
 
-cd ../backend
+```bash
+cd backend
 composer dump-autoload
 ```
-
-No new migrations — every table this phase uses (`tourism_categories`,
-`tourist_attractions`, `historical_records`, `notable_people_categories`,
-`notable_people`, `galleries`, `gallery_media`, `mediables`) existed
-since Phase 1.

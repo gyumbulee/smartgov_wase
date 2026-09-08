@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class HistoricalRecord extends Model
 {
-    use SoftDeletes;
+    use HasUlids, SoftDeletes;
 
     protected $keyType = 'string';
     public $incrementing = false;

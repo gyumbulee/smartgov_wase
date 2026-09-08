@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AuditLog extends Model
 {
+    use HasUlids;
+
     protected $keyType = 'string';
     public $incrementing = false;
     public $timestamps = false;

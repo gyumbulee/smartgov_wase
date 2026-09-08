@@ -9,6 +9,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ApplicationStatusHistory extends Model
 {
+    use HasUlids;
+
+    // The migration named this table in the singular
+    // ("application_status_history"), but Eloquent's default naming
+    // convention pluralizes the class name ("...histories"). Without
+    // this override, every query against this model looks for a table
+    // that doesn't exist.
+    protected $table = 'application_status_history';
+
     protected $keyType = 'string';
     public $incrementing = false;
     public $timestamps = false;

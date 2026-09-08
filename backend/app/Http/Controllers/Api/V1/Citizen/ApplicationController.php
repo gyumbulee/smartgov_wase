@@ -62,7 +62,7 @@ class ApplicationController extends Controller
 
         $application = $existingDraft ?? $this->createApplication->handle($citizen, $service);
 
-        return new ApplicationResource($application->load('service', 'fieldValues', 'documents'));
+        return new ApplicationResource($application->load('service.fields', 'service.requirements', 'fieldValues', 'documents'));
     }
 
     public function show(Request $request, Application $application)
@@ -70,7 +70,7 @@ class ApplicationController extends Controller
         $this->authorizeOwnership($request, $application);
 
         return new ApplicationResource(
-            $application->load('service', 'fieldValues', 'documents', 'statusHistory')
+            $application->load('service.fields', 'service.requirements', 'fieldValues', 'documents', 'statusHistory')
         );
     }
 
@@ -110,7 +110,7 @@ class ApplicationController extends Controller
             return response()->json(['message' => 'Application could not be submitted.', 'errors' => $result['errors']], 422);
         }
 
-        return new ApplicationResource($application->fresh()->load('service', 'statusHistory'));
+        return new ApplicationResource($application->fresh()->load('service.fields', 'service.requirements', 'statusHistory'));
     }
 
     public function cancel(Request $request, Application $application)

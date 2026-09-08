@@ -5,10 +5,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Upload, Loader2, CheckCircle2, XCircle, Trash2, CreditCard, Award } from "lucide-react";
 import { applicationService } from "@/services/applicationService";
-import { serviceService } from "@/services/serviceService";
 import { paymentService } from "@/services/paymentService";
 import type { Application } from "@/types/application";
-import type { Service } from "@/types/service";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
@@ -27,21 +25,21 @@ export default function ApplicationDetailPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [application, setApplication] = useState<Application | null>(null);
-  const [service, setService] = useState<Service | null>(null);
   const [values, setValues] = useState<Record<string, string | null>>({});
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitErrors, setSubmitErrors] = useState<string[] | null>(null);
   const [payingNow, setPayingNow] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const paymentResult = searchParams.get("payment"); // "success" | "failed" | "error" | null, set by the backend callback redirect
 
   const refresh = useCallback(async () => {
-    const app = await applicationService.get(params.id);
-    setApplication(app);
-    setValues(app.field_values ?? {});
-    if (app.service) {
-      const full = await serviceService.getBySlug(app.service.slug);
-      setService(full);
+    try {
+      const app = await applicationService.get(params.id);
+      setApplication(app);
+      setValues(app.field_values ?? {});
+    } catch {
+      setLoadError(true);
     }
   }, [params.id]);
 
@@ -57,6 +55,7 @@ export default function ApplicationDetailPage() {
     }
   }, [paymentResult]);
 
+  const service = application?.service ?? null;
   const isEditable = application?.status === "draft" || application?.status === "correction_required";
 
   async function handleSaveFields() {
@@ -121,6 +120,14 @@ export default function ApplicationDetailPage() {
     if (!application || !confirm("Cancel this application? This cannot be undone.")) return;
     await applicationService.cancel(application.id);
     router.push("/applications");
+  }
+
+  if (loadError) {
+    return (
+      <p className="text-sm text-red-600">
+        We couldn't load this application. It may not exist, or you may not have access to it.
+      </p>
+    );
   }
 
   if (!application || !service) {

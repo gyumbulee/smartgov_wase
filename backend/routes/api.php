@@ -8,11 +8,17 @@ use App\Http\Controllers\Api\V1\Admin\CertificateTemplateFieldController;
 use App\Http\Controllers\Api\V1\Admin\CertificateTemplateVersionController;
 use App\Http\Controllers\Api\V1\Admin\CitizenController as AdminCitizenController;
 use App\Http\Controllers\Api\V1\Admin\CommunityController as AdminCommunityController;
+use App\Http\Controllers\Api\V1\Admin\ComplaintCategoryController as AdminComplaintCategoryController;
+use App\Http\Controllers\Api\V1\Admin\ComplaintController as AdminComplaintController;
+use App\Http\Controllers\Api\V1\Admin\ContactMessageController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\DepartmentController as AdminDepartmentController;
+use App\Http\Controllers\Api\V1\Admin\DocumentCategoryController as AdminDocumentCategoryController;
+use App\Http\Controllers\Api\V1\Admin\DocumentController as AdminDocumentController;
 use App\Http\Controllers\Api\V1\Admin\EventController as AdminEventController;
 use App\Http\Controllers\Api\V1\Admin\ExceptionQueueController;
 use App\Http\Controllers\Api\V1\Admin\FacilityController as AdminFacilityController;
+use App\Http\Controllers\Api\V1\Admin\FaqController as AdminFaqController;
 use App\Http\Controllers\Api\V1\Admin\GalleryController as AdminGalleryController;
 use App\Http\Controllers\Api\V1\Admin\HistoricalRecordController as AdminHistoricalRecordController;
 use App\Http\Controllers\Api\V1\Admin\LeadershipController as AdminLeadershipController;
@@ -41,13 +47,18 @@ use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Citizen\ApplicationController;
 use App\Http\Controllers\Api\V1\Citizen\ApplicationDocumentController;
 use App\Http\Controllers\Api\V1\Citizen\CertificateController as CitizenCertificateController;
+use App\Http\Controllers\Api\V1\Citizen\ComplaintController as CitizenComplaintController;
 use App\Http\Controllers\Api\V1\Citizen\DashboardController as CitizenDashboardController;
+use App\Http\Controllers\Api\V1\Citizen\NotificationController;
 use App\Http\Controllers\Api\V1\Citizen\PaymentController as CitizenPaymentController;
 use App\Http\Controllers\Api\V1\Public\AnnouncementController;
 use App\Http\Controllers\Api\V1\Public\CertificateVerificationController;
+use App\Http\Controllers\Api\V1\Public\ContactController;
 use App\Http\Controllers\Api\V1\Public\DepartmentController;
+use App\Http\Controllers\Api\V1\Public\DocumentController as PublicDocumentController;
 use App\Http\Controllers\Api\V1\Public\EventController as PublicEventController;
 use App\Http\Controllers\Api\V1\Public\FacilityController as PublicFacilityController;
+use App\Http\Controllers\Api\V1\Public\FaqController;
 use App\Http\Controllers\Api\V1\Public\GalleryController as PublicGalleryController;
 use App\Http\Controllers\Api\V1\Public\HistoryController;
 use App\Http\Controllers\Api\V1\Public\LeadershipController;
@@ -128,6 +139,11 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/map', [MapController::class, 'index']);
 
+        Route::post('/contact', [ContactController::class, 'store']);
+        Route::get('/complaint-categories', [\App\Http\Controllers\Api\V1\Public\ComplaintCategoryController::class, 'index']);
+        Route::get('/faqs', [FaqController::class, 'index']);
+        Route::get('/documents', [PublicDocumentController::class, 'index']);
+
         // Only active + published services are ever visible here.
         Route::get('/services', [PublicServiceController::class, 'index']);
         Route::get('/services/{slug}', [PublicServiceController::class, 'show']);
@@ -165,6 +181,15 @@ Route::prefix('v1')->group(function () {
         Route::get('/certificates', [CitizenCertificateController::class, 'index']);
         Route::get('/certificates/{certificate}', [CitizenCertificateController::class, 'show']);
         Route::get('/certificates/{certificate}/download', [CitizenCertificateController::class, 'download']);
+
+        Route::get('/complaints', [CitizenComplaintController::class, 'index']);
+        Route::post('/complaints', [CitizenComplaintController::class, 'store']);
+        Route::get('/complaints/{complaint}', [CitizenComplaintController::class, 'show']);
+
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
     });
 
     // ---- Admin (requires staff/admin role + specific permissions) ------
@@ -273,6 +298,23 @@ Route::prefix('v1')->group(function () {
             Route::get('/audit-logs', [AuditLogController::class, 'index']);
         });
 
+        // Complaints (spec §47) — a genuine manual workflow, unlike
+        // certificate applications. Contact messages share the same
+        // gate since both are inbound-citizen-correspondence queues
+        // and no dedicated permission exists for either.
+        Route::middleware('permission:complaints.manage')->group(function () {
+            Route::apiResource('complaint-categories', AdminComplaintCategoryController::class)
+                ->parameters(['complaint-categories' => 'category'])
+                ->only(['index', 'store', 'destroy']);
+
+            Route::get('/complaints', [AdminComplaintController::class, 'index']);
+            Route::get('/complaints/{complaint}', [AdminComplaintController::class, 'show']);
+            Route::put('/complaints/{complaint}/status', [AdminComplaintController::class, 'updateStatus']);
+
+            Route::get('/contact-messages', [ContactMessageController::class, 'index']);
+            Route::put('/contact-messages/{contactMessage}/status', [ContactMessageController::class, 'updateStatus']);
+        });
+
         // News CMS — gated by 'news.publish' (content_admin, lga_admin,
         // super_admin). Editorial pipeline per spec §51: draft -> review
         // -> approved -> published; only publish() sets published_at.
@@ -344,6 +386,15 @@ Route::prefix('v1')->group(function () {
                 ->only(['index', 'store', 'show', 'update', 'destroy']);
             Route::post('/galleries/{gallery}/media', [AdminGalleryController::class, 'attachMedia']);
             Route::delete('/galleries/{gallery}/media/{media}', [AdminGalleryController::class, 'detachMedia']);
+
+            Route::apiResource('faqs', AdminFaqController::class)
+                ->only(['index', 'store', 'update', 'destroy']);
+
+            Route::apiResource('document-categories', AdminDocumentCategoryController::class)
+                ->parameters(['document-categories' => 'category'])
+                ->only(['index', 'store', 'destroy']);
+            Route::apiResource('documents', AdminDocumentController::class)
+                ->only(['index', 'store', 'destroy']);
         });
 
         // Projects — gated by 'projects.manage' (project_admin,

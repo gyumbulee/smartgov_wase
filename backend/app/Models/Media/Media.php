@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Media extends Model
 {
-    use SoftDeletes;
+    use HasUlids, SoftDeletes;
 
     protected $table = 'media';
     protected $keyType = 'string';
