@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { LayoutDashboard } from "lucide-react";
 
 const NAV_LINKS = [
   { href: "/services", label: "Services" },
@@ -9,6 +13,30 @@ const NAV_LINKS = [
 ];
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
+  // This header previously always showed "Log in / Get started",
+  // regardless of whether the person browsing was already
+  // authenticated — so a logged-in citizen or admin clicking any
+  // public nav link (Services, Government, Discover, News, Contact)
+  // saw what looked like a logged-out header, even though their
+  // session/token was completely untouched. smartgov_roles is set
+  // alongside smartgov_token at login/registration specifically so
+  // this check doesn't need an extra API call.
+  const [dashboardHref, setDashboardHref] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = window.localStorage.getItem("smartgov_token");
+    if (!token) return;
+
+    try {
+      const roles: string[] = JSON.parse(window.localStorage.getItem("smartgov_roles") ?? "[]");
+      setDashboardHref(roles.includes("citizen") ? "/dashboard" : "/admin/dashboard");
+    } catch {
+      // Roles weren't stored (e.g. a token from before this check
+      // existed) — fall back to the citizen dashboard rather than
+      // showing a broken/missing link.
+      setDashboardHref("/dashboard");
+    }
+  }, []);
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-black/5 bg-white/95 backdrop-blur">
@@ -35,12 +63,21 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           </nav>
 
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm font-medium text-ink-muted hover:text-brand-green">
-              Log in
-            </Link>
-            <Link href="/register" className="btn-primary">
-              Get started
-            </Link>
+            {dashboardHref ? (
+              <Link href={dashboardHref} className="btn-primary flex items-center gap-1.5">
+                <LayoutDashboard className="h-4 w-4" />
+                My dashboard
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" className="text-sm font-medium text-ink-muted hover:text-brand-green">
+                  Log in
+                </Link>
+                <Link href="/register" className="btn-primary">
+                  Get started
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>

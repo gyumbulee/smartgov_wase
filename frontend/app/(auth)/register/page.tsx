@@ -88,6 +88,9 @@ export default function RegisterPage() {
         password_confirmation: passwordConfirmation,
       });
       window.localStorage.setItem("smartgov_token", result.token);
+      // This flow only ever registers citizens (see completeCitizenRegistration),
+      // so the role is known without needing another round trip.
+      window.localStorage.setItem("smartgov_roles", JSON.stringify(["citizen"]));
       setStep("done");
       setTimeout(() => router.push("/dashboard"), 1200);
     } catch {

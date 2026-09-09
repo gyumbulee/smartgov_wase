@@ -35,6 +35,7 @@ async function handleSubmit(e: React.FormEvent) {
     }
 
     window.localStorage.setItem("smartgov_token", result.token);
+    window.localStorage.setItem("smartgov_roles", JSON.stringify(result.roles));
 
     const isCitizen = result.roles.includes("citizen");
 

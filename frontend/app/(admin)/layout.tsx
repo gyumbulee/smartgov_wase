@@ -85,7 +85,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="shrink-0 border-t border-white/10 p-3">
           <Link
             href="/login"
-            onClick={() => window.localStorage.removeItem("smartgov_token")}
+            onClick={() => {
+              window.localStorage.removeItem("smartgov_token");
+              window.localStorage.removeItem("smartgov_roles");
+            }}
             className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white"
           >
             <LogOut className="h-4 w-4" />

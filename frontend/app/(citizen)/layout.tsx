@@ -53,7 +53,10 @@ export default function CitizenLayout({ children }: { children: React.ReactNode 
             </Link>
             <Link
               href="/login"
-              onClick={() => window.localStorage.removeItem("smartgov_token")}
+              onClick={() => {
+                window.localStorage.removeItem("smartgov_token");
+                window.localStorage.removeItem("smartgov_roles");
+              }}
               className="flex items-center gap-1.5 text-sm text-ink-muted hover:text-red-600"
             >
               <LogOut className="h-4 w-4" />
