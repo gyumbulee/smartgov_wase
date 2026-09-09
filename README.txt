@@ -1,38 +1,40 @@
-Fix: missing Flutterwave config keys (Security hardening #3)
-================================================================
+Fix: no MIME-type allowlist on document uploads (Security hardening #4)
+==========================================================================
 
-Cause: FlutterwaveGateway and PaymentWebhookController both read
-config('payment.flutterwave.secret_key') and
-config('payment.flutterwave.webhook_secret_hash'), but config/
-payment.php never defined a 'flutterwave' block — only 'gateway'
-and 'frontend_url' were added in the earlier stub-payment fix.
+Cause: UploadApplicationDocumentRequest only validated
+'file' => ['required', 'file', 'max:10240'] — no extension/MIME
+restriction. The controller (ApplicationDocumentController::store)
+does separately check a requirement's accepted_file_types, but that
+field is optional on ServiceRequirement — if an admin leaves it
+blank for a given requirement, literally any file extension was
+accepted for that upload (.php, .exe, .html, .svg, etc). Mitigated
+somewhat by files landing on a private, non-web-accessible disk,
+but still a real gap.
 
-This wasn't causing a visible bug yet because PAYMENT_GATEWAY still
-defaults to "stub" for local dev, and the webhook correctly fails
-closed (rejects everything) when the secret is missing. But it
-means: the moment PAYMENT_GATEWAY is switched to "flutterwave" for
-production, payment initialization and webhook verification will
-both be broken until these are set.
+File changed:
+  backend/app/Http/Requests/Citizen/UploadApplicationDocumentRequest.php
 
-Files changed:
-  backend/config/payment.php   (added 'flutterwave' block)
-  backend/.env.example         (documents the 3 new env vars)
+Added 'mimes:pdf,jpg,jpeg,png' as a hard baseline ceiling — mirrors
+the existing pattern already used for file size (a 10MB ceiling
+that applies regardless of what a requirement configures). This
+matches the file types actually used across your seeded service
+requirements (pdf,jpg,png). A requirement's own accepted_file_types
+can still narrow this further in the controller; it just can no
+longer widen past this baseline.
+
+Note: Laravel's mimes rule checks actual file content (via Symfony's
+mime-type guesser), not just the extension in the filename or the
+client-supplied Content-Type header — so renaming a malicious file
+to document.pdf won't bypass it.
 
 Apply:
-  1. Overwrite these 2 files in your repo with the versions in this
+  1. Overwrite this 1 file in your repo with the version in this
      zip.
-  2. Before switching to the real gateway in production, add to
-     your actual .env (not .env.example):
-       PAYMENT_GATEWAY=flutterwave
-       FLUTTERWAVE_PUBLIC_KEY=<from Flutterwave dashboard>
-       FLUTTERWAVE_SECRET_KEY=<from Flutterwave dashboard>
-       FLUTTERWAVE_WEBHOOK_SECRET_HASH=<the "Secret Hash" you set
-         on the webhook in the dashboard — not the API secret key>
-     For local/dev testing with the stub gateway, no action needed —
-     nothing changes.
-  3. Run `php artisan config:clear` after applying if you've ever
-     cached config.
+  2. No .env/config changes, no cache to clear.
+  3. Test: try uploading a .txt or .exe file as an application
+     document — should now be rejected with a validation error
+     instead of accepted.
 
   git add -A
-  git commit -m "Security: add missing Flutterwave config keys (secret_key, webhook_secret_hash)"
+  git commit -m "Security: restrict application document uploads to pdf/jpg/jpeg/png by default"
   git push
