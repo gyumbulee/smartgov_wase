@@ -51,4 +51,33 @@ return [
 
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Flutterwave
+    |--------------------------------------------------------------------------
+    |
+    | Used by FlutterwaveGateway (payment initialize/verify) and
+    | PaymentWebhookController (webhook signature check) once
+    | PAYMENT_GATEWAY is switched from "stub" to "flutterwave" for
+    | production. These two keys were referenced via
+    | config('payment.flutterwave.*') but never defined anywhere in
+    | this file — since the file didn't exist at all until the
+    | 'gateway'/'frontend_url' fix above, and this block was missed
+    | at the time.
+    |
+    | Left unset (null) by default is intentional and safe here: with
+    | PAYMENT_GATEWAY still at its "stub" default, secret_key is never
+    | used, and webhook_secret_hash being empty makes the webhook
+    | correctly reject every request (see PaymentWebhookController) —
+    | it fails closed, not open. Both MUST be set in the real .env
+    | before ever switching PAYMENT_GATEWAY to "flutterwave".
+    |
+    */
+
+    'flutterwave' => [
+        'public_key' => env('FLUTTERWAVE_PUBLIC_KEY'),
+        'secret_key' => env('FLUTTERWAVE_SECRET_KEY'),
+        'webhook_secret_hash' => env('FLUTTERWAVE_WEBHOOK_SECRET_HASH'),
+    ],
+
 ];
