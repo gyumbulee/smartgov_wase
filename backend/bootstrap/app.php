@@ -17,6 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\EnsureRole::class,
             'permission' => \App\Http\Middleware\EnsurePermission::class,
         ]);
+
+        // Laravel 11+ doesn't apply an 'api' throttle by default the way
+        // the old RouteServiceProvider did — without this, every API
+        // route (including login, NIN verification, registration) had
+        // zero rate limiting at all.
+        $middleware->throttleApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

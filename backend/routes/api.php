@@ -90,14 +90,14 @@ Route::prefix('v1')->group(function () {
 
     // ---- Auth --------------------------------------------------------
     Route::prefix('auth')->group(function () {
-        Route::post('/login', [AuthController::class, 'login']);
-        Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
-        Route::post('/reset-password', [PasswordResetController::class, 'reset']);
+        Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth');
+        Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink'])->middleware('throttle:auth');
+        Route::post('/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:auth');
 
         // Citizen onboarding (spec §6): NIN verification, then account creation.
-        Route::post('/nin/verify', [NinVerificationController::class, 'submit']);
+        Route::post('/nin/verify', [NinVerificationController::class, 'submit'])->middleware('throttle:nin-verify');
         Route::get('/nin/status/{requestReference}', [NinVerificationController::class, 'status']);
-        Route::post('/register/citizen', [CitizenRegistrationController::class, 'complete']);
+        Route::post('/register/citizen', [CitizenRegistrationController::class, 'complete'])->middleware('throttle:auth');
 
         Route::middleware('auth:sanctum')->group(function () {
             Route::post('/logout', [AuthController::class, 'logout']);
