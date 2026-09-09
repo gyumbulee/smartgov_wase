@@ -10,7 +10,7 @@ class StoreLeadershipRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('leader');
+        $id = $this->route('leader')?->id;
         return [
             'name' => ['required', 'string', 'max:200'],
             'slug' => ['nullable', 'string', 'max:200', 'unique:leadership_profiles,slug,'.$id],

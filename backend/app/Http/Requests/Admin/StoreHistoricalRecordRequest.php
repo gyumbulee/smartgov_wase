@@ -10,7 +10,7 @@ class StoreHistoricalRecordRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('record');
+        $id = $this->route('record')?->id;
         return [
             'title' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', 'unique:historical_records,slug,'.$id],

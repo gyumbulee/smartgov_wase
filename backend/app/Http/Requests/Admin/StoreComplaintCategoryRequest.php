@@ -10,7 +10,7 @@ class StoreComplaintCategoryRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('category');
+        $id = $this->route('category')?->id;
         return [
             'name' => ['required', 'string', 'max:150'],
             'slug' => ['nullable', 'string', 'max:150', 'unique:complaint_categories,slug,'.$id],

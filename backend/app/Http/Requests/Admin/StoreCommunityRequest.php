@@ -10,7 +10,7 @@ class StoreCommunityRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('community');
+        $id = $this->route('community')?->id;
         return [
             'ward_id' => ['required', 'exists:wards,id'],
             'name' => ['required', 'string', 'max:150'],

@@ -10,7 +10,7 @@ class StoreProjectRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('project');
+        $id = $this->route('project')?->id;
         return [
             'name' => ['required', 'string', 'max:200'],
             'slug' => ['nullable', 'string', 'max:200', 'unique:projects,slug,'.$id],

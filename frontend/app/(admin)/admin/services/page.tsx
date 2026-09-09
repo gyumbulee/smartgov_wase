@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import axios from "axios";
 import { Plus, Banknote, CheckCircle2, PauseCircle, X, Settings2 } from "lucide-react";
 import { serviceService } from "@/services/serviceService";
 import type { Service } from "@/types/service";
@@ -193,8 +194,20 @@ function CreateServiceModal({ onClose, onCreated }: { onClose: () => void; onCre
       });
       onCreated();
       onClose();
-    } catch {
-      setError("Couldn't create service. Check the service code is unique.");
+    } catch (err) {
+      // Surface the backend's actual validation message instead of
+      // guessing "check the service code" for every possible failure
+      // (a wrong guess here previously masked at least one report of
+      // the service actually being created despite an error being
+      // shown — likely some other failure after the insert, e.g. in
+      // audit logging — which this message would have revealed).
+      const message =
+        (axios.isAxiosError(err) &&
+          (err.response?.data?.errors
+            ? Object.values(err.response.data.errors).flat().join(" ")
+            : err.response?.data?.message)) ||
+        "Couldn't create the service. Please try again.";
+      setError(message);
     } finally {
       setSaving(false);
     }

@@ -234,6 +234,52 @@ export default function ApplicationDetailPage() {
                         <option key={opt} value={opt}>{opt}</option>
                       ))}
                     </select>
+                  ) : field.field_type === "radio" ? (
+                    <div className="space-y-1.5">
+                      {field.options?.map((opt) => (
+                        <label key={opt} className="flex items-center gap-2 text-sm text-ink">
+                          <input
+                            type="radio"
+                            name={field.field_key}
+                            value={opt}
+                            checked={values[field.field_key] === opt}
+                            onChange={(e) => setValues((v) => ({ ...v, [field.field_key]: e.target.value }))}
+                            className="h-4 w-4 border-black/20 text-brand-green focus:ring-brand-green"
+                          />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                  ) : field.field_type === "checkbox" ? (
+                    <div className="space-y-1.5">
+                      {field.options?.map((opt) => {
+                        // Multiple options can be selected, but the rest
+                        // of the form stores every field as a single
+                        // string (field_values is Record<string, string
+                        // | null>) — so a checkbox group's selections are
+                        // joined into one comma-separated string, the
+                        // same convention already used elsewhere in this
+                        // app (e.g. ServiceRequirement.accepted_file_types).
+                        const selected = (values[field.field_key] ?? "").split(",").filter(Boolean);
+                        const isChecked = selected.includes(opt);
+                        return (
+                          <label key={opt} className="flex items-center gap-2 text-sm text-ink">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const next = e.target.checked
+                                  ? [...selected, opt]
+                                  : selected.filter((v) => v !== opt);
+                                setValues((v) => ({ ...v, [field.field_key]: next.join(",") }));
+                              }}
+                              className="h-4 w-4 rounded border-black/20 text-brand-green focus:ring-brand-green"
+                            />
+                            {opt}
+                          </label>
+                        );
+                      })}
+                    </div>
                   ) : (
                     <input
                       type={field.field_type === "date" ? "date" : field.field_type === "number" ? "number" : "text"}

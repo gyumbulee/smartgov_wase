@@ -10,7 +10,7 @@ class StoreTourismCategoryRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('tourismCategory');
+        $id = $this->route('tourismCategory')?->id;
         return [
             'name' => ['required', 'string', 'max:150'],
             'slug' => ['nullable', 'string', 'max:150', 'unique:tourism_categories,slug,'.$id],

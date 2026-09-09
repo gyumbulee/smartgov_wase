@@ -10,7 +10,7 @@ class StoreAnnouncementRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('announcement');
+        $id = $this->route('announcement')?->id;
         return [
             'title' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', 'unique:announcements,slug,'.$id],

@@ -17,7 +17,7 @@ class StoreNotablePersonRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('person');
+        $id = $this->route('person')?->id;
         return [
             'name' => ['required', 'string', 'max:200'],
             'slug' => ['nullable', 'string', 'max:200', 'unique:notable_people,slug,'.$id],

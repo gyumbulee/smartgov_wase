@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import axios from "axios";
 import { Plus, X, Pencil, Trash2, Building2 } from "lucide-react";
 import { adminOversightService } from "@/services/adminOversightService";
 import type { Department } from "@/types/admin";
@@ -136,8 +137,18 @@ function DepartmentModal({
         await adminOversightService.createDepartment(payload);
       }
       onSaved();
-    } catch {
-      setError("Couldn't save this department.");
+    } catch (err) {
+      // Surface the backend's actual validation/error message instead
+      // of a fixed generic guess, so a real cause (e.g. a server error
+      // unrelated to anything the citizen typed) isn't hidden behind
+      // the same unhelpful "Couldn't save" text every time.
+      const message =
+        (axios.isAxiosError(err) &&
+          (err.response?.data?.errors
+            ? Object.values(err.response.data.errors).flat().join(" ")
+            : err.response?.data?.message)) ||
+        "Couldn't save this department.";
+      setError(message);
     } finally {
       setSaving(false);
     }

@@ -10,7 +10,7 @@ class StoreGalleryRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('gallery');
+        $id = $this->route('gallery')?->id;
         return [
             'title' => ['required', 'string', 'max:200'],
             'slug' => ['nullable', 'string', 'max:200', 'unique:galleries,slug,'.$id],

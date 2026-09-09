@@ -10,7 +10,7 @@ class StoreTouristAttractionRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('attraction');
+        $id = $this->route('attraction')?->id;
         return [
             'name' => ['required', 'string', 'max:200'],
             'slug' => ['nullable', 'string', 'max:200', 'unique:tourist_attractions,slug,'.$id],

@@ -13,7 +13,7 @@ class StoreDepartmentRequest extends FormRequest
 
     public function rules(): array
     {
-        $departmentId = $this->route('department');
+        $departmentId = $this->route('department')?->id;
 
         return [
             'name' => ['required', 'string', 'max:200'],

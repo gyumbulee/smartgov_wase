@@ -13,7 +13,7 @@ class UpdateServiceRequest extends FormRequest
 
     public function rules(): array
     {
-        $serviceId = $this->route('service');
+        $serviceId = $this->route('service')?->id;
 
         return [
             'name' => ['sometimes', 'required', 'string', 'max:200'],

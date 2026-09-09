@@ -10,7 +10,7 @@ class StoreWardRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('ward');
+        $id = $this->route('ward')?->id;
         return [
             'name' => ['required', 'string', 'max:150'],
             'slug' => ['nullable', 'string', 'max:150', 'unique:wards,slug,'.$id],
