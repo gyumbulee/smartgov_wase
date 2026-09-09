@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LayoutDashboard } from "lucide-react";
+import { authService } from "@/services/authService";
 
 const NAV_LINKS = [
   { href: "/services", label: "Services" },
@@ -18,24 +19,29 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   // authenticated — so a logged-in citizen or admin clicking any
   // public nav link (Services, Government, Discover, News, Contact)
   // saw what looked like a logged-out header, even though their
-  // session/token was completely untouched. smartgov_roles is set
-  // alongside smartgov_token at login/registration specifically so
-  // this check doesn't need an extra API call.
+  // session/token was completely untouched.
+  //
+  // Roles come from GET /auth/me rather than a cached value set at
+  // login: a cached-roles approach silently misroutes citizens to
+  // the admin dashboard whenever the cache is missing (e.g. for any
+  // session that predates that cache existing) — an empty roles
+  // array reads as "not a citizen" instead of "unknown", which is
+  // the wrong failure mode. Asking the backend directly avoids that
+  // whole class of stale-cache bugs.
   const [dashboardHref, setDashboardHref] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = window.localStorage.getItem("smartgov_token");
-    if (!token) return;
+    if (!window.localStorage.getItem("smartgov_token")) return;
 
-    try {
-      const roles: string[] = JSON.parse(window.localStorage.getItem("smartgov_roles") ?? "[]");
-      setDashboardHref(roles.includes("citizen") ? "/dashboard" : "/admin/dashboard");
-    } catch {
-      // Roles weren't stored (e.g. a token from before this check
-      // existed) — fall back to the citizen dashboard rather than
-      // showing a broken/missing link.
-      setDashboardHref("/dashboard");
-    }
+    authService
+      .me()
+      .then(({ roles }) => setDashboardHref(roles.includes("citizen") ? "/dashboard" : "/admin/dashboard"))
+      .catch(() => {
+        // Token is present but invalid/expired — treat as logged out
+        // rather than showing a dashboard link that will just 401.
+        window.localStorage.removeItem("smartgov_token");
+        window.localStorage.removeItem("smartgov_roles");
+      });
   }, []);
   return (
     <>

@@ -58,6 +58,20 @@ export const authService = {
     await api.post("/auth/logout");
   },
 
+  // Fresh, authoritative roles for the current token — used by the
+  // public layout to decide which dashboard to link to. Deliberately
+  // not read from the smartgov_roles cache set at login: that cache
+  // is missing for any session created before that cache existed,
+  // and a missing/empty roles array was silently falling through to
+  // "not a citizen" (i.e. the admin dashboard) instead of failing
+  // safe. Hitting /auth/me avoids that whole class of stale-cache
+  // bugs at the cost of one extra request, only made when a token
+  // is present.
+  me: async () => {
+    const { data } = await api.get<{ user: { id: string }; roles: string[] }>("/auth/me");
+    return data;
+  },
+
   forgotPassword: async (email: string) => {
     const { data } = await api.post("/auth/forgot-password", { email });
     return data;
