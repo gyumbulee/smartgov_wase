@@ -1,40 +1,43 @@
-Fix: no MIME-type allowlist on document uploads (Security hardening #4)
-==========================================================================
+Fix: minimal password policy (Security hardening #6)
+========================================================
 
-Cause: UploadApplicationDocumentRequest only validated
-'file' => ['required', 'file', 'max:10240'] — no extension/MIME
-restriction. The controller (ApplicationDocumentController::store)
-does separately check a requirement's accepted_file_types, but that
-field is optional on ServiceRequirement — if an admin leaves it
-blank for a given requirement, literally any file extension was
-accepted for that upload (.php, .exe, .html, .svg, etc). Mitigated
-somewhat by files landing on a private, non-web-accessible disk,
-but still a real gap.
+Cause: both registration and password reset only validated
+'min:8|confirmed' — any 8+ character string passed, including
+common/known-breached passwords like "password1" or "12345678".
 
-File changed:
-  backend/app/Http/Requests/Citizen/UploadApplicationDocumentRequest.php
+Files changed:
+  backend/app/Http/Requests/Auth/CompleteRegistrationRequest.php
+  backend/app/Http/Controllers/Api/V1/Auth/PasswordResetController.php
 
-Added 'mimes:pdf,jpg,jpeg,png' as a hard baseline ceiling — mirrors
-the existing pattern already used for file size (a 10MB ceiling
-that applies regardless of what a requirement configures). This
-matches the file types actually used across your seeded service
-requirements (pdf,jpg,png). A requirement's own accepted_file_types
-can still narrow this further in the controller; it just can no
-longer widen past this baseline.
+Both now use Laravel's Password rule object:
+  Password::min(8)->letters()->numbers()->uncompromised()
 
-Note: Laravel's mimes rule checks actual file content (via Symfony's
-mime-type guesser), not just the extension in the filename or the
-client-supplied Content-Type header — so renaming a malicious file
-to document.pdf won't bypass it.
+- letters()/numbers(): low-friction floor, not full complexity
+  rules (no forced symbols/mixed-case — that tends to just push
+  people toward "Password1" patterns).
+- uncompromised(): checks the password against Have I Been Pwned's
+  breached-password database using k-anonymity — only a partial
+  hash prefix is sent, the actual plaintext password never leaves
+  this server. Requires outbound internet access from wherever this
+  runs; if that request fails/times out, Laravel's rule fails open
+  (treats it as not compromised) rather than blocking registration
+  entirely, so this is safe even in an environment without reliable
+  outbound access.
+
+Note the PasswordResetController file already had
+`use Illuminate\Support\Facades\Password;` imported for the
+password-reset broker — the validation rule class is imported
+separately as `PasswordRule` to avoid a naming collision.
 
 Apply:
-  1. Overwrite this 1 file in your repo with the version in this
+  1. Overwrite these 2 files in your repo with the versions in this
      zip.
   2. No .env/config changes, no cache to clear.
-  3. Test: try uploading a .txt or .exe file as an application
-     document — should now be rejected with a validation error
-     instead of accepted.
+  3. Test: try registering/resetting with a known weak password like
+     "password1" — should be rejected as compromised. A password
+     like "Wase2026Portal" (8+ chars, letters+numbers, not a known
+     breach) should pass.
 
   git add -A
-  git commit -m "Security: restrict application document uploads to pdf/jpg/jpeg/png by default"
+  git commit -m "Security: require letters+numbers and check against known breaches on password set/reset"
   git push
